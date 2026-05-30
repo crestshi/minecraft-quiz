@@ -1,0 +1,793 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>マイクラ ちしきテスト</title>
+    <style>
+        *, *::before, *::after {
+            box-sizing: border-box;
+        }
+
+        body {
+            margin: 0;
+            padding: 0;
+            /* マイクラの草ブロックと土をイメージしたドット絵風背景 */
+            background-color: #5c8e32;
+            background-image: 
+                linear-gradient(45deg, #4d7728 25%, transparent 25%, transparent 75%, #4d7728 75%, #4d7728),
+                linear-gradient(45deg, #4d7728 25%, transparent 25%, transparent 75%, #4d7728 75%, #4d7728);
+            background-size: 40px 40px;
+            background-position: 0 0, 20px 20px;
+            font-family: 'Helvetica Neue', Arial, 'Hiragino Kaku Gothic ProN', sans-serif;
+            overflow: hidden;
+            user-select: none;
+            -webkit-user-select: none;
+            height: 100vh;
+            width: 100vw;
+        }
+
+        #game-container {
+            position: relative;
+            width: 100%;
+            height: 100%;
+        }
+
+        /* ヘッダー情報 */
+        #header {
+            position: absolute;
+            top: 15px;
+            width: 100%;
+            text-align: center;
+            z-index: 10;
+        }
+
+        .info-bar {
+            display: flex;
+            justify-content: center;
+            gap: 15px;
+            margin-bottom: 10px;
+            flex-wrap: wrap;
+        }
+
+        .info-box {
+            font-size: 18px;
+            font-weight: bold;
+            color: #fff;
+            background: rgba(30, 30, 30, 0.85); /* マイクラの黒背景UI風 */
+            padding: 6px 16px;
+            border-radius: 4px;
+            border: 2px solid #555;
+            box-shadow: 0 4px 0px rgba(0,0,0,0.4);
+        }
+
+        #timer-box {
+            border: 2px solid #ff5555;
+            color: #ff5555;
+        }
+
+        #question-box {
+            background: rgba(230, 230, 230, 0.95);
+            border: 5px solid #4a4a4a;
+            border-radius: 6px;
+            padding: 12px 24px;
+            font-size: 20px;
+            font-weight: bold;
+            color: #111;
+            display: inline-block;
+            box-shadow: 0 6px 0px rgba(0,0,0,0.3);
+            max-width: 90%;
+            line-height: 1.5;
+        }
+
+        /* マイクラ風ブロック選択肢のスタイル */
+        .block-choice {
+            position: absolute;
+            width: 110px;
+            height: 110px;
+            cursor: pointer;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-size: 18px;
+            font-weight: bold;
+            color: white;
+            text-shadow: 2px 2px 0px rgba(0,0,0,0.8);
+            /* マイクラのブロックっぽいドット絵風の枠線と立体感 */
+            border: 6px solid #333;
+            box-shadow: inset -8px -8px 0px rgba(0,0,0,0.3), inset 8px 8px 0px rgba(255,255,255,0.2), 0 8px 10px rgba(0,0,0,0.3);
+            padding: 8px;
+            text-align: center;
+            word-break: break-all;
+        }
+
+        /* エフェクト */
+        .pop-effect {
+            position: absolute;
+            font-size: 50px;
+            animation: fadeOut 0.5s ease-out forwards;
+            pointer-events: none;
+            z-index: 5;
+        }
+
+        @keyframes fadeOut {
+            0% { opacity: 1; transform: scale(0.5); }
+            100% { opacity: 0; transform: scale(1.5); }
+        }
+
+        /* ○×メッセージ */
+        #message {
+            position: absolute;
+            top: 45%;
+            left: 50%;
+            transform: translate(-50%, -50%) scale(0);
+            font-size: 65px;
+            font-weight: bold;
+            z-index: 100;
+            pointer-events: none;
+            transition: transform 0.25s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        }
+
+        #message.show {
+            transform: translate(-50%, -50%) scale(1);
+        }
+
+        .correct-text { color: #55ff55; text-shadow: 3px 3px 0 #000, -3px -3px 0 #000, 3px -3px 0 #000, -3px 3px 0 #000; }
+        .wrong-text { color: #ff5555; text-shadow: 3px 3px 0 #000, -3px -3px 0 #000, 3px -3px 0 #000, -3px 3px 0 #000; }
+
+        /* 各種画面のオーバーレイ（重ね合わせ） */
+        .overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.75);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 200;
+        }
+
+        .window-box {
+            background: #2c2c2c;
+            color: #fff;
+            padding: 25px;
+            border-radius: 4px;
+            text-align: center;
+            box-shadow: 0 10px 0px rgba(0,0,0,0.5);
+            max-width: 90%;
+            width: 380px;
+            border: 4px solid #555555;
+        }
+
+        .window-box h2 {
+            margin-top: 0;
+            color: #ffff55;
+            font-size: 24px;
+            text-shadow: 2px 2px 0px #000;
+        }
+
+        .score-result {
+            font-size: 42px;
+            font-weight: bold;
+            color: #ffaa00;
+            margin: 15px 0;
+            text-shadow: 3px 3px 0px #000;
+        }
+
+        /* マイクラキャラ表示エリア */
+        .character-box {
+            display: inline-block;
+            background-color: #1a1a1a;
+            border: 2px solid #555;
+            padding: 10px;
+            margin: 10px 0;
+            font-family: monospace;
+            font-size: 11px;
+            line-height: 1.1;
+            white-space: pre;
+            text-align: left;
+        }
+
+        .btn-container {
+            display: flex;
+            justify-content: space-around;
+            gap: 15px;
+            margin-top: 20px;
+        }
+
+        .btn-vertical-container {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            margin-top: 25px;
+        }
+
+        .btn {
+            padding: 12px 25px;
+            font-size: 20px;
+            font-weight: bold;
+            border: 3px solid #000;
+            border-radius: 4px;
+            cursor: pointer;
+            box-shadow: inset -4px -4px 0px rgba(0,0,0,0.4), inset 4px 4px 0px rgba(255,255,255,0.2);
+            transition: transform 0.1s;
+            flex: 1;
+            text-shadow: 1px 1px 0px #000;
+        }
+
+        .btn:active {
+            transform: translateY(2px);
+            box-shadow: inset -2px -2px 0px rgba(0,0,0,0.4);
+        }
+
+        .btn-name { background-color: #5555ff; color: white; width: 100%; }
+        .btn-retry { background-color: #ffaa00; color: white; }
+        .btn-quit { background-color: #aaaaaa; color: white; }
+        .btn-start { background-color: #55ff55; color: black; text-shadow: none; width: 100%; }
+
+        .hidden { display: none !important; }
+    </style>
+</head>
+<body>
+
+<div id="game-container">
+    <div id="header">
+        <div class="info-bar">
+            <div class="info-box">もんだい: <span id="current-q-num">1</span> / 10</div>
+            <div class="info-box" id="timer-box">のこり: <span id="timer">15</span>びょう</div>
+            <div class="info-box">てんすう: <span id="score">0</span> てん</div>
+        </div>
+        <div id="question-box"></div>
+    </div>
+
+    <div id="message"></div>
+
+    <div id="name-screen" class="overlay">
+        <div class="window-box" style="border-color: #aa00aa;">
+            <h2 id="name-question-title">🤔 きみの なまえは？</h2>
+            <div id="name-btn-area" class="btn-vertical-container">
+                <button class="btn btn-name" onclick="checkName('ゆうた')">ゆうた</button>
+                <button class="btn btn-name" onclick="checkName('ゆうと')">ゆうと</button>
+                <button class="btn btn-name" onclick="checkName('ゆうま')">ゆうま</button>
+            </div>
+            <p id="name-error-text" class="hidden" style="font-size: 28px; font-weight: bold; color: #ff5555; margin: 30px 0; text-shadow: 2px 2px 0px #000;"></p>
+        </div>
+    </div>
+
+    <div id="start-screen" class="overlay hidden">
+        <div class="window-box" style="border-color: #55ff55;">
+            <h2>⚔️ マイクラ ちしきテスト ⚔️</h2>
+            <p style="font-size: 15px; color: #ddd; line-height: 1.6; text-align: left; padding: 0 10px;">
+                したから うかんでくる 「ぶろっく」 から<br>
+                ただしい「こたえ」を タッチして ね！<br><br>
+                ⏱️ じかん：1もん 15びょう<br>
+                📊 ぜんぶで：10もん だよ。
+            </p>
+            <button class="btn btn-start" onclick="startGame()">スタート！</button>
+        </div>
+    </div>
+
+    <div id="result-screen" class="overlay hidden">
+        <div class="window-box">
+            <h2>🎉 ぜんぶ おわったよ！</h2>
+            <p style="font-size: 16px; margin-bottom: 5px; color:#aaa;">きみの てんすうは...</p>
+            <div class="score-result"><span id="final-score">0</span> てん</div>
+            
+            <div id="character-art" class="character-box"></div>
+            
+            <p id="evaluation-text" style="font-size: 15px; font-weight: bold; color: #ffff55; margin-top: 10px; line-height: 1.4;"></p>
+            <div class="btn-container">
+                <button class="btn btn-retry" onclick="restartGame()">もういっかい</button>
+                <button class="btn btn-quit" onclick="quitGame()">やめる</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    // 小学1年生向けに完全ひらがな・カタカナ化した100問のクイズデータ
+    const allQuizData = [
+        { q: "ねざーに 行くための げーとを つくる ぶろっくは？", a: "こくようせき", alternatives: ["がんばん", "てつ"] },
+        { q: "くりーぱーが いちばん にがてで、にげだす どうぶつは？", a: "ねこ", alternatives: ["おおかみ", "きつね"] },
+        { q: "えんだーどらごんが いる せかいの なまえは？", a: "えんど", alternatives: ["ねざー", "ちじょう"] },
+        { q: "はさみを使って ひつじから とれる ぶろっくは？", a: "ひつじのけ", alternatives: ["いと", "かわ"] },
+        { q: "水に ふれると だめーじを うける、ねざーの てきは？", a: "ぶれいず", alternatives: ["がすと", "ぴぐりん"] },
+        { q: "だいやの つるはしを つくるのに 必要な だいやの かずは？", a: "3こ", alternatives: ["2こ", "4こ"] },
+        { q: "ごーれむを じぶんで つくるとき、あたまに のせるものは？", a: "かぼちゃ", alternatives: ["すいか", "きんぶろっく"] },
+        { q: "めせんを あわせると、わーぷして おそってくる くろい てきは？", a: "えんだーまん", alternatives: ["うぃざー", "ぞんび"] },
+        { q: "マイクラの せかいで、いちばん かたくて こわせない ぶろっくは？", a: "がんばん", alternatives: ["こくようせき", "だいや"] },
+        { q: "かみなりに うたれると、おおばくはつ するようになる てきは？", a: "くりーぱー", alternatives: ["ぞんび", "すけるとん"] },
+        { q: "ぞんびが ひの ひかりを あびたとき、どうなる？", a: "もえる", alternatives: ["きえる", "ちいさくなる"] },
+        { q: "たかい ところから おちたとき、だめーじを なくす ぶろっくは？", a: "すらいむぶろっく", alternatives: ["がらす", "つち"] },
+        { q: "すなを かまどで やくと、なにが できる？", a: "がらす", alternatives: ["れんが", "てつ"] },
+        { q: "おおかみを ぺっとに するために、あげる アイテムは？", a: "ほね", alternatives: ["おにく", "おさかな"] },
+        { q: "やまねこを なつかせるために、あげる アイテムは？", a: "なまの さかな", alternatives: ["りんご", "こむぎ"] },
+        { q: "むらびとを ぞんびから ままーってくれる、つよい みかたは？", a: "あいあん ごーれむ", alternatives: ["すのー ごーれむ", "おおかみ"] },
+        { q: "マイクラの よるの じかんは、リアルの じかんで なんぷん？", a: "7ふん", alternatives: ["10ふん", "5ふん"] },
+        { q: "ねざーで べっどを 使って ねようとすると、どうなる？", a: "おおばくはつ する", alternatives: ["あさに なる", "なにも おきない"] },
+        { q: "えんだーまんが にがてで、ふれると にげるものは？", a: "水", alternatives: ["まぐま", "ゆき"] },
+        { q: "ぱんを つくるために 必要な ものは？", a: "こむぎ", alternatives: ["にんじん", "じゃがいも"] },
+        { q: "おなかが いちばん いっぱいに なる、やいた おにくは？", a: "やいた ぶたにく", alternatives: ["なまの ぎゅうにく", "くさったにく"] },
+        { q: "のむと とうめいに なったり、あしが はやくなったり するものは？", a: "ぽーしょん", alternatives: ["すーぷ", "みるく"] },
+        { q: "はちのすから あつめられる、あまくて おいしいものは？", a: "はちみつ", alternatives: ["さとう", "じゃむ"] },
+        { q: "だいやよりも さらに つよい、さいつよの こうせきは？", a: "ねざらいと", alternatives: ["えめらるど", "れっどすとーん"] },
+        { q: "うみの そこに ある、おたからが ねむる おおしんでんの なまえは？", a: "かいてい しんでん", alternatives: ["さばくの じいん", "もりの ようかん"] },
+        { q: "じぶんが やられたときに、ふっかつする ばしょを きめるものは？", a: "べっど", alternatives: ["ちぇすと", "さぎょうだい"] },
+        { q: "どくを かけてくる、あおくて ちいさい くもの なまえは？", a: "どうくつ ぐも", alternatives: ["おおぐも", "ねざー くも"] },
+        { q: "さばくの ぴらみっどの なかに ある、あぶない わなは？", a: "てぃーえぬてぃー", alternatives: ["まぐま", "やの わな"] },
+        { q: "アイテムを たくさん しまっておける、きで つくる はこは？", a: "ちぇすと", alternatives: ["さぎょうだい", "かまど"] },
+        { q: "くらい どうくつを おかるく てらすために、よくつかうものは？", a: "たいまつ", alternatives: ["らんたん", "ぐろうすとーん"] },
+        { q: "るーいんどげーとや ねざーの ようさいに ある、きんいろの てきは？", a: "ぴぐりん", alternatives: ["ぞんび", "すけるとん"] },
+        { q: "にんじんを つかって、くらを つけると のる事のできる どうぶつは？", a: "ぶた", alternatives: ["うし", "ひつじ"] },
+        { q: "うみや かわで、おさかなを つるために つかう どうぐは？", a: "つりざお", alternatives: ["つるはし", "むしめがね"] },
+        { q: "にわとりが じかんが たつと、したに おとすものは？", a: "たまご", alternatives: ["はね", "おにく"] },
+        { q: "いぬの ように なつかせて、いっしょに たたかってくれる どうぶつは？", a: "おおかみ", alternatives: ["ねこ", "おつえ"] },
+        { q: "ぶたや うしを おびきよせるために、もつ アイテムは？", a: "こむぎ", alternatives: ["にんじん", "さかな"] },
+        { q: "うみの なかで いきが できるようになる、レアな かぶとは？", a: "かめのこうら", alternatives: ["だいやのへるめっと", "きんのへるめっと"] },
+        { q: "そらを とぶことができる、レアな つばさの アイテムは？", a: "えりとら", alternatives: ["まんと", "てんしのつばさ"] },
+        { q: "うてば とおい ばしょに わーぷできる、えんだーまんの ドロップは？", a: "えんだーぱーる", alternatives: ["えんだーのめ", "わーぷだま"] },
+        { q: "うみの なかで あかるく ひかる、きいろい ぶろっくは？", a: "しーらんたん", alternatives: ["たいまつ", "ぐろうすとーん"] },
+        { q: "こむぎを うえるために、つちを かがやす どうぐは？", a: "くわ", alternatives: ["おの", "つるはし"] },
+        { q: "きを いちばん はやく きるための どうぐは？", a: "おおの", alternatives: ["つるはし", "しぇあーず"] },
+        { q: "まぐまの 上を あるくことができる、ねざーの どうぶつは？", a: "すとらいだー", alternatives: ["がすと", "ほぐりん"] },
+        { q: "ゆきだまを 投げて てきを おいはらう、ゆきの おにんぎょうは？", a: "すのー ごーれむ", alternatives: ["あいあん ごーれむ", "ふゆおとこ"] },
+        { q: "ねざーの ぶれいずが おとす、ぽーしょんの ざいりょうは？", a: "ぶれいずろっど", alternatives: ["ぶれいずぱうだー", "ひのこな"] },
+        { q: "すらいむを たおすと 手にいる、みどり色の ねばねばは？", a: "すらいむぼーる", alternatives: ["みどりのゼリー", "ねばねばのたま"] },
+        { q: "こくようせきに 火を つけて げーとを ひらく どうぐは？", a: "ひうちいしとてつ", alternatives: ["たいまつ", "まぐまばけつ"] },
+        { q: "えんだーどらごんを たおしたとき、あしもとに でてくる 丸いものは？", a: "どらごんのたまご", alternatives: ["だいやのぶろっく", "くろいおたから"] },
+        { q: "うみの上を すいすい すすむために、きで つくる のりものは？", a: "ぼーと", alternatives: ["いかだ", "とろっこ"] },
+        { q: "れーるの上を はしらせて、アイテムや じぶんを はこぶ のりものは？", a: "とろっこ", alternatives: ["ぼーと", "うま"] },
+        { q: "うしから 水を もらうとき、つかう どうぐは？", a: "あきばけつ", alternatives: ["がらすのびん", "おわん"] },
+        { q: "きのこを 食べている、あかい うしの なまえは？", a: "むーしゅるーむ", alternatives: ["きのこうし", "あかうし"] },
+        { q: "えめらるどを つかって、アイテムを こうかんしてくれる 人は？", a: "むらびと", alternatives: ["おうさま", "しょうにん"] },
+        { q: "むらびとの いえに ある、おにいさんが お仕事をする 台は？", a: "しょくぎょうぶろっく", alternatives: ["さぎょうだい", "かまど"] },
+        { q: "よるに ねないと、そらから おそってくる はねのある てきは？", a: "ふぁんとむ", alternatives: ["がすと", "こうもり"] },
+        { q: "うみの なかに いて、さんまたの やりを 投げてくる てきは？", a: "どらうんど", alternatives: ["ぞんび", "いか"] },
+        { q: "森の ようかんに いて、まほうを つかってくる てきは？", a: "えばーかー", alternatives: ["うぃっち", "うぃざー"] },
+        { q: "えばーかーを たおすと 手にいる、しななくなる おまもりは？", a: "ふしのとーてむ", alternatives: ["きんのリンゴ", "だいやのまもり"] },
+        { q: "のむと ステータスが もとにもどる、どうぶつの 飲みものは？", a: "ぎゅうにゅう", alternatives: ["お水", "はちみつみず"] },
+        { q: "あるくと ぽこぽこ 音がする、ねざーの あかい 地面は？", a: "ねざーらっく", alternatives: ["まぐまぶろっく", "あかつち"] },
+        { q: "うみの なかに ある、ふむと 下に ひっぱられる ぶろっくは？", a: "まぐまぶろっく", alternatives: ["そうるさんど", "すなぶろっく"] },
+        { q: "うえを あるくと、あしが とても おそくなる ねざーの すなは？", a: "そうるさんど", alternatives: ["まぐまぶろっく", "どろつち"] },
+        { q: "きを 燃やして、たいまつの ざいりょうを つくるとき、何になる？", a: "木炭（もくたん）", alternatives: ["石炭（せきたん）", "灰（はい）"] },
+        { q: "そらから ふってくる、ゆきの ぶろっくを こわすと 手にいるものは？", a: "ゆきだま", alternatives: ["こおり", "お水"] },
+        { q: "すいかや かぼちゃの たねを 手にいれるために、こわす草は？", a: "そこらの草", alternatives: ["お花の草", "大きな木"] },
+        { q: "すけるとんを たおしたとき、手に入る 白くて かたいものは？", a: "ほね", alternatives: ["いと", "てつのつぶ"] },
+        { q: "くもを たおしたとき、弓や つりざおの ざいりょうになるものは？", a: "いと", alternatives: ["かわ", "ほね"] },
+        { q: "うぃっちが なげてくる、あぶない 飲みものは？", a: "すぷらっしゅぽーしょん", alternatives: ["まぐまびん", "どくのスープ"] },
+        { q: "まほうを つかって、ぶきや よろいを つよくする 台の なまえは？", a: "えんちゃんとてーぶる", alternatives: ["さぎょうだい", "かまど"] },
+        { q: "えんちゃんとする時に、必要な 青い いしの なまえは？", a: "らぴすらずり", alternatives: ["だいや", "れっどすとーん"] },
+        { q: "びんで はちみつを とるとき、おこらせないために 下でおくものは？", a: "たきび", alternatives: ["たいまつ", "まぐま"] },
+        { q: "ねざーの 要塞（ようさい）にいる、くろい すけるとんの なまえは？", a: "うぃざーすけるとん", alternatives: ["だーくすけるとん", "ほねぞんび"] },
+        { q: "うぃざーを つくるために、あたまが 何個必要？", a: "3こ", alternatives: ["2こ", "4こ"] },
+        { q: "うぃざーを たおすと 手にいる、ピカピカ ひかる お星さまは？", a: "ねざーすたー", alternatives: ["だいやのほし", "えんどすたー"] },
+        { q: "ねざーすたーを つかって、まわりに パワーを だす タワーは？", a: "びーこん", alternatives: ["えんちゃんとの塔", "ひかりの台"] },
+        { q: "ぴぐりんに おそわれないために、つけておく よろいの 色は？", a: "きんいろ", alternatives: ["だいや色", "てつ色"] },
+        { q: "ぴぐりんと アイテムを こうかんするときに、あげるものは？", a: "きんいんごっと", alternatives: ["だいや", "えめらるど"] },
+        { q: "えんどにある、えんだーどらごんの 体力を 回復させる 塔の上のものは？", a: "えんどくりすたる", alternatives: ["えんどのほし", "どらごんのたま"] },
+        { q: "えんどの まち（えんどしてぃ）を まもっている、貝のような てきは？", a: "しゅるかー", alternatives: ["えんだーむし", "かいるい"] },
+        { q: "しゅるかーの たまに あたると、どうなってしまう？", a: "上に うきあがる", alternatives: ["したに もぐる", "こおってしまう"] },
+        { q: "しゅるかーを たおして つくる、アイテムを いれたまま はこべる箱は？", a: "しゅるかーぼっくす", alternatives: ["ちぇすと", "まほうのはこ"] },
+        { q: "マイクラの 世界で、いちばん あしもとが はやくなる どうぶつは？", a: "うま", alternatives: ["ぶた", "おおかみ"] },
+        { q: "うまに のるために、からだに つけてあげる アイテムは？", a: "くら", alternatives: ["ひも", "よろい"] },
+        { q: "おおかみの 首わの色を かえるために、つかう アイテムは？", a: "染料（せんりょう）", alternatives: ["ペンキ", "お水"] },
+        { q: "パンダが いちばん 大すきな、みどりの 食べものは？", a: "たけ", alternatives: ["さとうきび", "はっぱ"] },
+        { q: "さとうや かみのけ（紙）の ざいりょうになる、水べに はえる植物は？", a: "さとうきび", alternatives: ["たけ", "みずくさ"] },
+        { q: "じぶんの いえの ばしょを わすれないために、かべに はる 地図は？", a: "ちず", alternatives: ["かんばん", "え"] },
+        { q: "文字を かいて、地面や 壁（かべ）に 立てておく 木のいたは？", a: "かんばん", alternatives: ["きのはこ", "がくぶち"] },
+        { q: "お気に入りの アイテムを、かべに かざっておくための 枠は？", a: "アイテムがくぶち", alternatives: ["かんばん", "ちぇすと"] },
+        { q: "レッドストーンの 回路（かいろ）を うごかすための、木のぼうは？", a: "ればー", alternatives: ["ぼたん", "たいまつ"] },
+        { q: "ふむだけで レッドストーンを うごかせる、地面におく いたは？", a: "かづあつばん", alternatives: ["ぼたん", "とびら"] },
+        { q: "TNT（てぃーえぬてぃー）を つくるために、すなと 何が必要？", a: "火薬（かやく）", alternatives: ["いおう", "いしころ"] },
+        { q: "火薬（かやく）を いちばん よくおとす、みどりの てきは？", a: "くりーぱー", alternatives: ["ぞんび", "すけるとん"] },
+        { q: "うみの中にいる、タッチすると びりびり 毒をくれる まるい魚は？", a: "ふぐ", alternatives: ["さけ", "たら"] },
+        { q: "オウムが 大すきで、なつかせるために あげる たねは？", a: "草のたね", alternatives: ["すいかのたね", "かぼちゃのたね"] },
+        { q: "暗い洞窟（どうくつ）の おくの おくにいる、音をきいて おそってくるボスは？", a: "うぉーでん", alternatives: ["うぃざー", "えんだーどらごん"] },
+        { q: "うぉーでんが いる、あおい ねばねばした ブロックのある場所は？", a: "古代都市（こだいとし）", alternatives: ["ねざーようさい", "えんどしてぃ"] },
+        { q: "うぉーでんの 体力は、えんだーどらごんより 多い？少ない？", a: "うぉーでんの方が多い", alternatives: ["どらごんの方が多い", "おなじ"] },
+        { q: "マイクラの 世界で、いちばん 最初に 手にすれべき ブロックは？", a: "原木（き）", alternatives: ["石（いし）", "土（つち）"] },
+        { q: "きを つるはしで こわすと、どうなる？", a: "こわすのに 時間がかかる", alternatives: ["すぐこわれる", "爆発（ばくはつ）する"] }
+    ];
+
+    // ドット絵風AA(アスキーアート)データ（全10種類）
+    const artData = {
+        100: { name: "スティーブ", color: "#55ff55", art: `■■■■■■■■\n■🏽🏽🏽🏽🏽🏽■\n■🏽⬛🏽🏽⬛🏽■\n■🏽🏽🏽🏽🏽🏽■\n■🏽🏽⬛⬛🏽🏽■\n■🏽🏽🏽🏽🏽🏽■` },
+        90:  { name: "エンダーマン", color: "#aa00aa", art: `⬛⬛⬛⬛⬛⬛⬛⬛\n⬛⬛⬛⬛⬛⬛⬛⬛\n⬛🟪⬛⬛⬛🟪⬛⬛\n⬛⬛⬛⬛⬛⬛⬛⬛\n⬛⬛⬛⬛⬛⬛⬛⬛` },
+        80:  { name: "アイアンゴーレム", color: "#dddddd", art: `⬜⬜⬜⬜⬜⬜⬜⬜\n⬜⬜👁️⬜👁️⬜⬜\n⬜⬜⬜👃⬜⬜⬜\n⬜⬜⬜⬜⬜⬜⬜⬜\n⬜⬜▒▒▒▒⬜⬜` },
+        70:  { name: "クリーパー", color: "#55ff55", art: `🟩🟩🟩🟩🟩🟩🟩🟩\n🟩⬛⬛🟩🟩⬛⬛🟩\n🟩⬛⬛🟩🟩⬛⬛🟩\n🟩🟩🟩⬛⬛🟩🟩🟩\n🟩🟩⬛⬛⬛⬛🟩🟩` },
+        60:  { name: "オオカミ", color: "#cccccc", art: `▒▒▒▒▒▒▒▒\n▒▒⬛▒▒⬛▒▒\n▒▒▒▒👃▒▒▒\n▒▒▒👅▒▒▒\n▒▒▒▒▒▒▒▒` },
+        50:  { name: "ゾンビ", color: "#00aa00", art: `🟢🟢🟢🟢🟢🟢🟢🟢\n🟢⬛⬛🟢🟢⬛⬛🟢\n🟢🟢🟢🟢🟢🟢🟢🟢\n🟢🟢🟢⬛⬛🟢🟢🟢\n🟢🟢🟢🟢🟢🟢🟢🟢` },
+        40:  { name: "スケルトン", color: "#ffffff", art: `⬜⬜⬜⬜⬜⬜⬜⬜\n⬜⬛⬛⬜⬜⬛⬛⬜\n⬜⬜⬜⬜⬜⬜⬜⬜\n⬜⬜⬛⬛⬛⬛⬜⬜\n⬜⬜⬜⬜⬜⬜⬜⬜` },
+        30:  { name: "ブタ", color: "#ff55ff", art: `🌸🌸🌸🌸🌸🌸🌸🌸\n🌸⬛🌸🌸🌸⬛🌸🌸\n🌸🌸🌸🌸🌸🌸🌸🌸\n🌸🌸🐽🐽🐽🌸🌸🌸\n🌸🌸🌸🌸🌸🌸🌸🌸` },
+        20:  { name: "ヒツジ", color: "#ffffff", art: `☁️☁️☁️☁️☁️☁️☁️☁️\n☁️🏽⬛☁️☁️⬛🏽☁️\n☁️🏽🏽🏽🏽🏽🏽☁️\n☁️☁️☁️🏽🏽☁️☁️☁️\n☁️☁️☁️☁️☁️☁️☁️☁️` },
+        10:  { name: "ニワトリ", color: "#ffffff", art: `⬜⬜⬜⬜⬜⬜⬜⬜\n⬜⬛⬜⬜⬜⬛⬜⬜\n⬜⬜⬜🟧⬜⬜⬜⬜\n⬜⬜⬜🟥⬜⬜⬜⬜\n⬜⬜⬜⬜⬜⬜⬜⬜` },
+        0:   { name: "タマゴ", color: "#ffff55", art: `  🟨🟨🟨🟨  \n 🟨🟨🟨🟨🟨 \n🟨🟨🟨🟨🟨🟨\n🟨🟨🟨🟨🟨🟨\n 🟨🟨🟨🟨🟨 \n  🟨🟨🟨🟨  ` }
+    };
+
+    // マイクラ風ブロックの色設定
+    const blockStyles = [
+        { bg: '#735135', border: '#4d331e' }, // 土ブロック
+        { bg: '#7a7a7a', border: '#545454' }, // 丸石ブロック
+        { bg: '#d1b06e', border: '#9e8048' }, // 木の板ブロック
+        { bg: '#363636', border: '#1f1f1f' }, // 黒曜石ブロック
+        { bg: '#406922', border: '#294514' }  // 草ブロック
+    ];
+
+    const TOTAL_QUESTIONS = 10;
+    const TIME_LIMIT = 15;
+
+    let gameQuestions = [];
+    let currentQuestionIndex = 0;
+    let score = 0;
+    let activeBalloons = [];
+    
+    let timerCount = TIME_LIMIT;
+    let timerInterval = null;
+    let animationFrameId = null;
+    let isQuestionActive = false;
+
+    // BGM用オーディオコンテキスト
+    let audioCtx = null;
+    let bgmInterval = null;
+    let bgmStep = 0;
+
+    // ピコピコBGMのメロディ音符 (マイクラ風レトロBGM)
+    const bgmMelody = [
+        60, 62, 64, 67, 64, 67, 69, 72,
+        69, 67, 64, 62, 60, 64, 62, 55,
+        57, 60, 64, 62, 60, 62, 64, 67,
+        69, 72, 74, 76, 72, 69, 67, 60
+    ];
+
+    const gameContainer = document.getElementById('game-container');
+    const questionBox = document.getElementById('question-box');
+    const scoreDisplay = document.getElementById('score');
+    const currentQNumDisplay = document.getElementById('current-q-num');
+    const timerDisplay = document.getElementById('timer');
+    const messageDisplay = document.getElementById('message');
+    
+    const nameScreen = document.getElementById('name-screen');
+    const nameQuestionTitle = document.getElementById('name-question-title');
+    const nameBtnArea = document.getElementById('name-btn-area');
+    const nameErrorText = document.getElementById('name-error-text');
+
+    const startScreen = document.getElementById('start-screen');
+    const resultScreen = document.getElementById('result-screen');
+    const finalScoreDisplay = document.getElementById('final-score');
+    const characterArt = document.getElementById('character-art');
+    const evaluationText = document.getElementById('evaluation-text');
+
+    // BGM再生システム
+    function initAudio() {
+        if (!audioCtx) {
+            audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        }
+    }
+
+    function playTone(freq, type, duration, vol) {
+        if (!audioCtx) return;
+        try {
+            let osc = audioCtx.createOscillator();
+            let gain = audioCtx.createGain();
+            osc.type = type;
+            osc.frequency.value = freq;
+            gain.gain.setValueAtTime(vol, audioCtx.currentTime);
+            gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + duration);
+            osc.connect(gain);
+            gain.connect(audioCtx.destination);
+            osc.start();
+            osc.stop(audioCtx.currentTime + duration);
+        } catch(e) {}
+    }
+
+    function startBGM() {
+        initAudio();
+        if (bgmInterval) clearInterval(bgmInterval);
+        bgmStep = 0;
+        
+        // 0.25秒ごとに音を鳴らすテンポ
+        bgmInterval = setInterval(() => {
+            if (!isQuestionActive) return;
+            let note = bgmMelody[bgmStep % bgmMelody.length];
+            // 数の計算で周波数(Hz)に変換
+            let freq = 440 * Math.pow(2, (note - 69) / 12);
+            
+            // ピコピコした三角波で優しいバックグラウンド音
+            playTone(freq, 'triangle', 0.4, 0.08);
+            
+            // リズム用のサブ音（ベース）
+            if (bgmStep % 4 === 0) {
+                let baseNote = bgmMelody[Math.floor(bgmStep / 4) % bgmMelody.length] - 12;
+                let baseFreq = 440 * Math.pow(2, (baseNote - 69) / 12);
+                playTone(baseFreq, 'sine', 0.6, 0.1);
+            }
+            bgmStep++;
+        }, 280);
+    }
+
+    function stopBGM() {
+        if (bgmInterval) {
+            clearInterval(bgmInterval);
+            bgmInterval = null;
+        }
+    }
+
+    // 効果音
+    function playSoundEffect(type) {
+        initAudio();
+        if (!audioCtx) return;
+        if (type === 'correct') {
+            playTone(523.25, 'square', 0.1, 0.15); // ド
+            setTimeout(() => playTone(659.25, 'square', 0.15, 0.15), 100); // ミ
+            setTimeout(() => playTone(783.99, 'square', 0.2, 0.15), 200); // ソ
+        } else if (type === 'wrong') {
+            playTone(293.66, 'sawtooth', 0.15, 0.15); // レ
+            setTimeout(() => playTone(220.00, 'sawtooth', 0.3, 0.15), 150); // ラ
+        } else if (type === 'pop') {
+            playTone(880, 'sine', 0.05, 0.2);
+        }
+    }
+
+    function checkName(selectedName) {
+        if (selectedName === 'ゆうと') {
+            // せいかいを表示してすぐスタート画面へ進む
+            showMessage("○ せいかい！", "correct-text");
+            playSoundEffect('correct');
+            
+            setTimeout(() => {
+                nameScreen.classList.add('hidden');
+                startScreen.classList.remove('hidden');
+            }, 1200);
+        } else {
+            nameQuestionTitle.classList.add('hidden');
+            nameBtnArea.classList.add('hidden');
+            playSoundEffect('wrong');
+            
+            nameErrorText.textContent = "え、ほんとうに？";
+            nameErrorText.classList.remove('hidden');
+
+            setTimeout(() => {
+                nameErrorText.classList.add('hidden');
+                nameQuestionTitle.classList.remove('hidden');
+                nameBtnArea.classList.remove('hidden');
+            }, 2000);
+        }
+    }
+
+    function startGame() {
+        startScreen.classList.add('hidden');
+        resultScreen.classList.add('hidden');
+        score = 0;
+        currentQuestionIndex = 0;
+        scoreDisplay.textContent = score;
+        
+        // 100問のなかからランダムに10問をえらぶ
+        let shuffled = [...allQuizData].sort(() => Math.random() - 0.5);
+        gameQuestions = shuffled.slice(0, TOTAL_QUESTIONS);
+
+        isQuestionActive = true;
+        loadQuestion();
+        startBGM();
+        
+        if(!animationFrameId) {
+            updateGame();
+        }
+    }
+
+    function loadQuestion() {
+        clearBalloons();
+
+        if (currentQuestionIndex >= TOTAL_QUESTIONS) {
+            endGame();
+            return;
+        }
+
+        isQuestionActive = true;
+        currentQNumDisplay.textContent = currentQuestionIndex + 1;
+        const currentQuestion = gameQuestions[currentQuestionIndex];
+        questionBox.textContent = currentQuestion.q;
+
+        timerCount = TIME_LIMIT;
+        timerDisplay.textContent = timerCount;
+        clearInterval(timerInterval);
+        timerInterval = setInterval(countdown, 1000);
+
+        let choices = [currentQuestion.a, ...currentQuestion.alternatives];
+        choices.sort(() => Math.random() - 0.5);
+
+        const width = window.innerWidth;
+        choices.forEach((text, index) => {
+            const blockObj = document.createElement('div');
+            blockObj.className = 'block-choice';
+            blockObj.textContent = text;
+            
+            // ランダムにマイクラのブロックデザインを割り当て
+            let style = blockStyles[Math.floor(Math.random() * blockStyles.length)];
+            blockObj.style.backgroundColor = style.bg;
+            blockObj.style.borderColor = style.border;
+            
+            // 画面幅にきれいに並べる計算
+            blockObj.style.left = `${(width / 3) * index + (Math.random() * 16 - 8) + 12}px`;
+            blockObj.style.bottom = `-140px`;
+
+            // お子様が文字を読みやすいように少しゆっくりうごかす
+            blockObj.speed = 0.8 + Math.random() * 0.5;
+
+            blockObj.addEventListener('touchstart', (e) => { e.preventDefault(); handleSelection(text, blockObj); });
+            blockObj.addEventListener('mousedown', () => handleSelection(text, blockObj));
+
+            gameContainer.appendChild(blockObj);
+            activeBalloons.push(blockObj);
+        });
+    }
+
+    function countdown() {
+        if (!isQuestionActive) return;
+        timerCount--;
+        timerDisplay.textContent = timerCount;
+
+        if (timerCount <= 0) {
+            clearInterval(timerInterval);
+            isQuestionActive = false;
+            showMessage("⏰ じかんぎれ！", "wrong-text");
+            playSoundEffect('wrong');
+            
+            setTimeout(() => {
+                currentQuestionIndex++;
+                loadQuestion();
+            }, 1500);
+        }
+    }
+
+    function handleSelection(selectedText, element) {
+        if (!isQuestionActive) return;
+
+        const currentQuestion = gameQuestions[currentQuestionIndex];
+
+        if (selectedText === currentQuestion.a) {
+            clearInterval(timerInterval);
+            isQuestionActive = false;
+            score += 10;
+            scoreDisplay.textContent = score;
+            showMessage("○ せいかい！", "correct-text");
+            playSoundEffect('correct');
+            createPopEffect(element, "💎💥✨");
+            
+            setTimeout(() => {
+                currentQuestionIndex++;
+                loadQuestion();
+            }, 1200);
+        } else {
+            clearInterval(timerInterval);
+            isQuestionActive = false;
+            showMessage("× ちがうよ！", "wrong-text");
+            playSoundEffect('wrong');
+            createPopEffect(element, "💨");
+            
+            setTimeout(() => {
+                currentQuestionIndex++;
+                loadQuestion();
+            }, 1500);
+        }
+    }
+
+    function updateGame() {
+        activeBalloons.forEach(blockObj => {
+            let currentBottom = parseFloat(blockObj.style.bottom);
+            currentBottom += blockObj.speed;
+            blockObj.style.bottom = `${currentBottom}px`;
+
+            if (currentBottom > window.innerHeight && isQuestionActive) {
+                blockObj.style.bottom = `-140px`;
+                blockObj.style.left = `${Math.random() * (window.innerWidth - 110)}px`;
+            }
+        });
+        animationFrameId = requestAnimationFrame(updateGame);
+    }
+
+    function clearBalloons() {
+        activeBalloons.forEach(b => b.remove());
+        activeBalloons = [];
+    }
+
+    function createPopEffect(element, emoji) {
+        const rect = element.getBoundingClientRect();
+        const effect = document.createElement('div');
+        effect.className = 'pop-effect';
+        effect.textContent = emoji;
+        effect.style.left = `${rect.left + 15}px`;
+        effect.style.top = `${rect.top + 15}px`;
+        gameContainer.appendChild(effect);
+        setTimeout(() => effect.remove(), 500);
+    }
+
+    function showMessage(text, className) {
+        messageDisplay.textContent = text;
+        messageDisplay.className = className + " show";
+        setTimeout(() => {
+            messageDisplay.className = "";
+        }, 1100);
+    }
+
+    function endGame() {
+        clearInterval(timerInterval);
+        isQuestionActive = false;
+        clearBalloons();
+        stopBGM();
+
+        finalScoreDisplay.textContent = score;
+        
+        // 10点きざみで細かくキャラクターを設定
+        let info = artData[score];
+        characterArt.style.color = info.color;
+        characterArt.textContent = info.art;
+        
+        // 点数ごとの応援ひらがなメッセージ
+        if (score === 100) {
+            evaluationText.textContent = "🏅 100てん！かんぺき！きみは まいくら の たつじん (すてぃーぶ) だね！";
+        } else if (score === 90) {
+            evaluationText.textContent = "🌟 すごすぎる！えんだーまん も びっくり の ちしき だよ！";
+        } else if (score === 80) {
+            evaluationText.textContent = "⚔️ おお！ごーれむ みたいに つよくて かっこいいぞ！";
+        } else if (score === 70) {
+            evaluationText.textContent = "💣 すごいすごい！くりーぱー 級の だいばくはつ パワーだ！";
+        } else if (score === 60) {
+            evaluationText.textContent = "🐺 なついた おおかみ みたいに マイクラと おともだちだね！";
+        } else if (score === 50) {
+            evaluationText.textContent = "👍 はんぶん せいかい！ぞんび より ずっと くわしいぞ！";
+        } else if (score === 40) {
+            evaluationText.textContent = "🏹 がんばった！すけるとん の や のように まっすぐ すすもう！";
+        } else if (score === 30) {
+            evaluationText.textContent = "🐖 ぶたさん と いっしょに てくてく あるいて おぼえよう！";
+        } else if (score === 20) {
+            evaluationText.textContent = "🐑 ひつじさん みたいに のんびり たのしく がんばろう！";
+        } else if (score === 10) {
+            evaluationText.textContent = "🐓 にわとりさん と いっしょに つぎは はばたこうね！";
+        } else {
+            evaluationText.textContent = "🥚 ここから すてきな たまごが かえるよ！つぎが チャンス！";
+        }
+
+        resultScreen.classList.remove('hidden');
+    }
+
+    function restartGame() {
+        resultScreen.classList.add('hidden');
+        nameScreen.classList.remove('hidden');
+        nameQuestionTitle.classList.remove('hidden');
+        nameBtnArea.classList.remove('hidden');
+        nameErrorText.classList.add('hidden');
+    }
+
+    function quitGame() {
+        clearInterval(timerInterval);
+        clearBalloons();
+        stopBGM();
+        if(animationFrameId) {
+            cancelAnimationFrame(animationFrameId);
+            animationFrameId = null;
+        }
+        
+        window.close();
+
+        gameContainer.innerHTML = `
+            <div style="display:flex; justify-content:center; align-items:center; width:100vw; height:100vh; background:#111; color:#fff; flex-direction:column; padding: 20px; text-align:center;">
+                <h1 style="font-size:32px; color:#55ff55; margin-bottom:10px;">あそんでくれて ありがとう！</h1>
+                <p style="font-size:18px; color:#aaa; margin-bottom:20px;">また マイクラ の せかい で あおうね！</p>
+                <p style="font-size:14px; color:#555;">※がめんが とじない ばあいは、たぶを とじてね。</p>
+            </div>
+        `;
+    }
+
+    window.addEventListener('resize', () => {
+        if(isQuestionActive && gameQuestions.length > 0) {
+            const width = window.innerWidth;
+            activeBalloons.forEach((blockObj, index) => {
+                blockObj.style.left = `${(width / 3) * index + 12}px`;
+            });
+        }
+    });
+</script>
+</body>
+</html>
